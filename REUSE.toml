@@ -374,3 +374,10 @@ path = "styles/map-explainer/demo/index.html"
 precedence = "override"
 SPDX-FileCopyrightText = ["2026 Lemomo (LemoLab)", "OpenStreetMap contributors (the IN array)"]
 SPDX-License-Identifier = "MIT AND ODbL-1.0"
+
+# Fonts of the explainer pipeline (explainer/engine/fonts): STIX Two Text and JetBrains Mono, via Google Fonts
+[[annotations]]
+path = ["explainer/engine/fonts/**"]
+precedence = "override"
+SPDX-FileCopyrightText = ["2001-2021 The STIX Fonts Project Authors", "2020 The JetBrains Mono Project Authors"]
+SPDX-License-Identifier = "OFL-1.1"
