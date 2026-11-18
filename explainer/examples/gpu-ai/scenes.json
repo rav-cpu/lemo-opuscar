@@ -1,0 +1,30 @@
+{
+ "title": "Why do GPUs make AI fast?",
+ "topic": "Why do GPUs make AI fast?",
+ "voice": {
+  "provider": "auto",
+  "elevenlabs": {"model": "eleven_multilingual_v2"},
+  "kokoro": {"voice": "af_heart", "speed": 1.0}
+ },
+ "scenes": [
+  {"id": "s1", "say": "Why does AI run on GPUs... and not on a normal CPU?",
+   "visual": {"type": "title", "text": "Why do GPUs make AI fast?", "sub": "a 40-second answer"}},
+  {"id": "s2", "say": "Because under the hood, AI is mostly one thing. Multiplying grids of numbers.",
+   "visual": {"type": "formula", "tex": "y = W·x + b", "caption": "one layer of a neural network", "notes": ["W = a grid of weights", "x = the input numbers"], "pin": true}},
+  {"id": "s3", "say": "And a big model does that billions of times, for every single word it writes.",
+   "visual": {"type": "readout", "big": {"value": 1000000000, "prefix": "≈ ", "label": "multiplications per word"}, "rows": [["one layer", "millions"], ["a whole model", "billions"]]}},
+  {"id": "s4", "say": "A CPU has a few very fast cores. They work through the list, one step after another.",
+   "visual": {"type": "bars", "count": 16, "mode": "serial", "caption": "CPU: a few fast cores, in turn", "counter": "8 to 16 cores"}},
+  {"id": "s5", "say": "A GPU has thousands of simpler cores. They all multiply at the same time.",
+   "visual": {"type": "bars", "count": 96, "mode": "parallel", "caption": "GPU: thousands of cores, all at once", "counter": "thousands of cores"}},
+  {"id": "s6", "say": "So when the grid gets bigger, the CPU slows right down. The GPU barely notices.",
+   "visual": {"type": "graph", "caption": "time to finish vs grid size", "x": [0, 10], "y": [0, 10], "xlabel": "grid size", "ylabel": "time",
+              "fns": [{"expr": "0.09*x*x", "label": "CPU"}, {"expr": "0.6 + 0.25*x", "label": "GPU"}]}},
+  {"id": "s7", "say": "Same math. Just done in parallel. That's the whole secret.",
+   "visual": {"type": "signal", "caption": "many small signals, one result", "traces": [
+     {"label": "core 1", "wave": "sine", "freq": 0.9, "amp": 0.8},
+     {"label": "core 2", "wave": "sine", "freq": 1.35, "amp": 0.6, "phase": 1.2},
+     {"label": "core 3", "wave": "sine", "freq": 2.1, "amp": 0.45, "phase": 2.5}],
+     "sum": {"label": "Σ  all cores together"}}, "hold": 0.6}
+ ]
+}
