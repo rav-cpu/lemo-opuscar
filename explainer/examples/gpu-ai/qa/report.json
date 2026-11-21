@@ -1,0 +1,18 @@
+{
+ "errors": 0,
+ "warnings": 1,
+ "issues": [
+  {
+   "sev": "WARN",
+   "check": "voice",
+   "t0": 0,
+   "t1": 0,
+   "what": "voice is the local fallback (kokoro af_heart); set ELEVENLABS_API_KEY for the human voice"
+  }
+ ],
+ "audio": {
+  "I": -14.6,
+  "TP": -2.1,
+  "length": 47
+ }
+}
