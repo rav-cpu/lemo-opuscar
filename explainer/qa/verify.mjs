@@ -15,6 +15,7 @@
 //  12 subtitle timing (≥ 1.8 s, ≥ line + 0.6 s, no overlap)   13 loudness −14 ±1 LUFS, true peak ≤ −1 dBTP
 //  14 video length = timeline length       15 reading time of on-screen text (core readcheck)
 //  16 empty scene (a scene that draws nothing)   17 voice provider + pronunciation record (fallback voice = WARN)
+//  18 the page is the 1080×1920 these checks assume
 import fs from 'fs'; import path from 'path'; import { execFileSync, spawnSync } from 'child_process';
 import { openDemo, closeServer } from '../../core/render/page.mjs';
 
@@ -49,6 +50,8 @@ function close(key) { const o = open.get(key); open.delete(key); if (o.t1 - o.t0
 // ── 1–7: layout and camera, from the page ──
 const { browser, page } = await openDemo(dir, { w: W, h: H });
 const DUR = await page.evaluate(() => window.DUR);
+const dims = await page.evaluate(() => ({ w: innerWidth, h: innerHeight }));
+if (dims.w !== W || dims.h !== H) add('ERROR', 'aspect', 0, 0, `the page is ${dims.w}×${dims.h}, not the ${W}×${H} these checks assume`);
 let prevV = null, prevCam = null;
 for (let t = 0; t < DUR; t += STEP) {
   const q = await page.evaluate(tt => window.QA(tt), t);
@@ -114,13 +117,18 @@ if (hasVideo) {
   for (let i = 1; i < ys.length; i++) { const t = i / 24; if (t > end - .05 || t < 1.5) continue; if (Math.abs(ys[i] - ys[i - 1]) > 12) add('ERROR', 'luma-pop', t, t + 1 / 24, `brightness jumps ${ys[i - 1].toFixed(1)} → ${ys[i].toFixed(1)} between frames`); }
   const bd = spawnSync('ffmpeg', ['-hide_banner', '-i', VIDEO, '-vf', 'blackdetect=d=0.08:pix_th=0.02', '-an', '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
   for (const m of bd.matchAll(/black_start:([\d.]+) black_end:([\d.]+)/g)) if (+m[1] < end) add('ERROR', 'black-frames', +m[1], +m[2], 'black/blank frames before the ending');
-  const lo = spawnSync('ffmpeg', ['-hide_banner', '-i', VIDEO, '-af', 'ebur128=peak=true', '-f', 'null', '-'], { encoding: 'utf8' }).stderr;
-  const I = +(lo.match(/I:\s+(-?[\d.]+) LUFS/g)?.pop().match(/-?[\d.]+/)[0]), TP = +(lo.match(/Peak:\s+(-?[\d.]+) dBFS/g)?.pop().match(/-?[\d.]+/)[0]);
-  if (!(Math.abs(I + 14) <= 1)) add('ERROR', 'loudness', 0, 0, `integrated loudness ${I} LUFS (target −14 ±1)`);
-  if (!(TP <= -1)) add('ERROR', 'true-peak', 0, 0, `true peak ${TP} dBTP (limit −1)`);
-  const vd = +execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', VIDEO]).toString();
-  if (Math.abs(vd - DUR) > .1) add('ERROR', 'length', 0, 0, `video is ${vd}s, timeline is ${DUR}s`);
-  var audioStats = { I, TP, length: vd };
+  const lo = String(spawnSync('ffmpeg', ['-hide_banner', '-i', VIDEO, '-af', 'ebur128=peak=true', '-f', 'null', '-'], { encoding: 'utf8' }).stderr || '');
+  const measured = re => { const m = [...lo.matchAll(re)].pop(); return m ? +m[1] : null; };   // null, never a throw: no audio track is a failure, not a crash
+  const I = measured(/I:\s+(-?[\d.]+) LUFS/g), TP = measured(/Peak:\s+(-?[\d.]+) dBFS/g);
+  if (I == null) add('ERROR', 'loudness', 0, 0, 'ffmpeg measured no integrated loudness (is there an audio track?)');
+  else if (!(Math.abs(I + 14) <= 1)) add('ERROR', 'loudness', 0, 0, `integrated loudness ${I} LUFS (target −14 ±1)`);
+  if (TP == null) add('ERROR', 'true-peak', 0, 0, 'ffmpeg measured no true peak (is there an audio track?)');
+  else if (!(TP <= -1)) add('ERROR', 'true-peak', 0, 0, `true peak ${TP} dBTP (limit −1)`);
+  let vd = null;
+  try { vd = +execFileSync('ffprobe', ['-v', 'error', '-show_entries', 'format=duration', '-of', 'csv=p=0', VIDEO]).toString(); }
+  catch { add('ERROR', 'length', 0, 0, `ffprobe could not read the duration of ${path.basename(VIDEO)}`); }
+  if (vd != null && Math.abs(vd - DUR) > .1) add('ERROR', 'length', 0, 0, `video is ${vd}s, timeline is ${DUR}s`);
+  var audioStats = I != null && TP != null ? { I, TP, length: vd } : null;
   // contact sheet for a human look
   spawnSync('ffmpeg', ['-y', '-loglevel', 'error', '-i', VIDEO, '-vf', 'fps=1/2,scale=216:-1,tile=9x3', '-frames:v', '1', path.join(dir, 'qa', 'contact.jpg')]);
 } else add('WARN', 'video', 0, 0, `no rendered video at ${VIDEO}: video checks skipped`);
@@ -140,20 +148,22 @@ for (const [i, c] of meta.cues.entries()) {
 }
 // ── 15: reading time (library tool) ──
 const rc = spawnSync('node', ['core/render/readcheck.mjs', dir, '--size', `${W}x${H}`], { encoding: 'utf8' });
-if (rc.status === 1) add('ERROR', 'reading-time', 0, 0, (rc.stdout + rc.stderr).trim().split('\n').filter(l => /short|never/i.test(l)).slice(0, 4).join(' | ') || 'readcheck failed');
+if (rc.status !== 0) add('ERROR', 'reading-time', 0, 0, (rc.status === 2 ? 'readcheck could not check the page (no TEXTS): ' : '') + ((rc.stdout + rc.stderr).trim().split('\n').filter(l => /short|never|TEXTS|error/i.test(l)).slice(0, 4).join(' | ') || 'readcheck failed'));
+
+// ── 17: the voice record (added before the counts below, or the gate says PASS while its findings hold an ERROR) ──
+const vj = path.join(dir, 'voice', 'voice.json'), vmeta = fs.existsSync(vj) ? JSON.parse(fs.readFileSync(vj)) : null, pron = vmeta?.said || {};
+if (!vmeta) add('ERROR', 'voice', 0, 0, 'no voice/voice.json: the narration did not go through explainer/voice/tts.py (pronunciation gate)');
+else if (vmeta.provider !== 'elevenlabs') add('WARN', 'voice', 0, 0, `voice is the local fallback (${vmeta.provider} ${vmeta.voice}); set ELEVENLABS_API_KEY for the human voice`);
 
 // ── report ──
 issues.sort((a, b) => (a.sev > b.sev ? 1 : -1) || a.t0 - b.t0);
 const errs = issues.filter(i => i.sev === 'ERROR').length, warns = issues.length - errs;
-const vj = path.join(dir, 'voice', 'voice.json'), vmeta = fs.existsSync(vj) ? JSON.parse(fs.readFileSync(vj)) : null, pron = vmeta?.said;
-if (!vmeta) add('ERROR', 'voice', 0, 0, 'no voice/voice.json: the narration did not go through explainer/voice/tts.py (pronunciation gate)');
-else if (vmeta.provider !== 'elevenlabs') add('WARN', 'voice', 0, 0, `voice is the local fallback (${vmeta.provider} ${vmeta.voice}); set ELEVENLABS_API_KEY for the human voice`);
 let md = `# QA report — ${path.basename(dir)}\n\n**${errs ? 'FAIL' : 'PASS'}**: ${errs} error(s), ${warns} warning(s). Sampled every ${STEP}s over ${DUR}s; overlaps must last ≥ ${PERSIST}s to count.\n\n`;
 md += `| Check | Result |\n|---|---|\n`;
-const checks = ['voice', 'empty-scene', 'text-overlap', 'label-crossed', 'knob-overlap', 'hud-collision', 'subtitle-zone', 'safe-area', 'camera-jerk', 'luma-pop', 'black-frames', 'voice-overlap', 'silence-broken', 'voice-late', 'subtitle-short', 'subtitle-early', 'subtitle-overlap', 'loudness', 'true-peak', 'length', 'reading-time'];
+const checks = ['voice', 'empty-scene', 'text-overlap', 'label-crossed', 'knob-overlap', 'hud-collision', 'subtitle-zone', 'safe-area', 'aspect', 'camera-jerk', 'luma-pop', 'black-frames', 'voice-overlap', 'silence-broken', 'voice-late', 'subtitle-short', 'subtitle-early', 'subtitle-overlap', 'loudness', 'true-peak', 'length', 'reading-time'];
 for (const c of checks) { const n = issues.filter(i => i.check === c); md += `| ${c} | ${n.length ? `${n[0].sev === 'ERROR' ? '❌' : '⚠️'} ${n.length}` : '✅'} |\n`; }
 if (audioStats) md += `\nAudio: ${audioStats.I} LUFS integrated, true peak ${audioStats.TP} dBTP, length ${audioStats.length}s.\n`;
-if (vmeta) md += `\nVoice: **${vmeta.provider}** (${vmeta.voice}${vmeta.model ? ', ' + vmeta.model : ''}). Lexicon terms: ${vmeta.terms.join(', ') || 'none'}.\n\nExactly what each line was told to say (${vmeta.provider === 'kokoro' ? 'phonemes' : 'text after lexicon respelling'}):\n\n${Object.entries(pron).map(([k, v]) => `- ${k}: \`${v}\``).join('\n')}\n`;
+if (vmeta) md += `\nVoice: **${vmeta.provider}** (${vmeta.voice}${vmeta.model ? ', ' + vmeta.model : ''}). Lexicon terms: ${(vmeta.terms || []).join(', ') || 'none'}.\n\nExactly what each line was told to say (${vmeta.provider === 'kokoro' ? 'phonemes' : 'text after lexicon respelling'}):\n\n${Object.entries(pron).map(([k, v]) => `- ${k}: \`${v}\``).join('\n')}\n`;
 if (issues.length) md += `\n## Findings\n\n${issues.map(i => `- **${i.sev}** \`${i.check}\` ${i.t1 > i.t0 ? `${i.t0}–${i.t1}s` : ''}: ${i.what}`).join('\n')}\n`;
 md += `\n## Not covered automatically\n\n- Whether the voice *sounds* natural, and whether the facts in the script are right: a human listens once.\n- Taste: pacing, whether a shot is interesting. The contact sheet (qa/contact.jpg) is for that.\n`;
 fs.mkdirSync(path.join(dir, 'qa'), { recursive: true });

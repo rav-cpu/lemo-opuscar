@@ -85,6 +85,19 @@ styles/*/demo/stills/*
 # The user's own films (what the agent makes)
 /films/
 
+# The explainer example builds in place; only its QA report is kept, as evidence a build ran
+/explainer/examples/*/index.html
+/explainer/examples/*/out/
+/explainer/examples/*/voice/
+/explainer/examples/*/stills/
+/explainer/examples/*/*.mp4
+/explainer/examples/*/*.srt
+/explainer/examples/*/poster.jpg
+/explainer/examples/*/dist/
+/explainer/examples/*/qa/*
+!/explainer/examples/*/qa/report.md
+!/explainer/examples/*/qa/report.json
+
 
 # Production logs are internal: they stay local
 styles/*/PRODUCTION_LOG*

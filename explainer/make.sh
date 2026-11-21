@@ -22,6 +22,7 @@ step "6/8 master + mux"
 cd "$FILM/out"
 # two-pass loudnorm to −14 LUFS, oversampled true-peak limit (works on ffmpeg 6 and 7)
 J=$(ffmpeg -hide_banner -i mix.wav -af loudnorm=I=-14:TP=-1.5:LRA=11:print_format=json -f null - 2>&1 | sed -n '/^{/,/^}/p')
+[ -n "$J" ] || { echo "✗ ffmpeg measured nothing for out/mix.wav (loudnorm): see its output above"; exit 1; }
 M=$(echo "$J" | python3 -c "import json,sys;d=json.load(sys.stdin);print(f\"measured_I={d['input_i']}:measured_TP={d['input_tp']}:measured_LRA={d['input_lra']}:measured_thresh={d['input_thresh']}:offset={d['target_offset']}\")")
 ffmpeg -y -loglevel error -i mix.wav -af "loudnorm=I=-14:TP=-1.5:LRA=11:$M:linear=true,volume=-0.6dB,aresample=192000,alimiter=limit=0.74:level=false:attack=1:release=50,aresample=48000" -c:a pcm_s16le master.wav
 ffmpeg -y -loglevel error -i video.mp4 -i master.wav -map 0:v -map 1:a -c:v libx264 -crf 19 -preset slow -pix_fmt yuv420p -c:a aac -b:a 192k -shortest -movflags +faststart "$FILM/$SLUG.mp4"

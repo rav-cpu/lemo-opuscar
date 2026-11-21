@@ -28,7 +28,7 @@ QA gate checks (report in `films/<slug>/qa/report.md`, contact sheet `qa/contact
 text-on-text overlap, labels crossed by traces/curves, anything running into the HUD or under the subtitles,
 safe area (warn), empty scenes, camera jerks (un-eased moves), brightness pops between frames, black frames,
 voice lines overlapping, narration running into the ending, subtitle timing (≥ 1.8 s, line + 0.6 s, no overlap),
-loudness −14 ±1 LUFS, true peak, video length, reading time of every on-screen text (core `readcheck`),
+loudness −14 ±1 LUFS, true peak, video length, the page's 1080×1920 size, reading time of every on-screen text (core `readcheck`),
 and the voice record: which provider spoke, and exactly what each line was told to say. The local fallback voice is a WARN.
 
 Not automatic: whether the facts are right and whether it *sounds* good. Listen once before publishing.
