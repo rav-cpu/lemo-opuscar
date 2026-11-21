@@ -27,7 +27,7 @@
 | length | ✅ |
 | reading-time | ✅ |
 
-Audio: -14.6 LUFS integrated, true peak -2.1 dBTP, length 47s.
+Audio: -14.7 LUFS integrated, true peak -2.1 dBTP, length 47s.
 
 Voice: **kokoro** (af_heart). Lexicon terms: AI, CPU, GPU, GPUs.
 

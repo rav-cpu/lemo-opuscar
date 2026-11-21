@@ -42,7 +42,7 @@ Not automatic: whether the facts are right and whether it *sounds* good. Listen 
 | `engine/index.html` | the page every film uses (copied into the film folder) |
 | `engine/export.mjs` | timeline + sound events + subtitle cues → `out/timeline.json` |
 | `engine/mix.py` | score (chord per scene), foley from events, voice warmth, ducking |
-| `voice/tts.py` | pronunciation gate + pluggable voice (ElevenLabs / Kokoro) |
+| `voice/tts.py` | pronunciation gate + pluggable voice (ElevenLabs / `core/tts/tts.py`'s `load()` hook for Kokoro) |
 | `voice/lexicon.json` | how to say tech terms; grows with every film |
 | `qa/verify.mjs` | the QA gate |
 | `examples/gpu-ai/scenes.json` | the first test film |

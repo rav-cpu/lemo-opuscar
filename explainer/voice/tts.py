@@ -89,13 +89,16 @@ if prov == 'elevenlabs':
         dur[L['id']] = round(len(a) / sr, 3); said[L['id']] = texts[i]; print(L['id'], dur[L['id']], texts[i])
     meta = {'provider': 'elevenlabs', 'voice': vid, 'model': model}
 else:
-    # Kokoro through the library's own loader (espeak path fix, model check), then phoneme-level lexicon substitution
-    src = open(os.path.join(LIB, 'core', 'tts', 'tts.py'), encoding='utf-8').read().split('avail = k.get_voices()')[0]
-    lj = os.path.join(out, 'lines.json'); json.dump(lines, open(lj, 'w', encoding='utf-8'), ensure_ascii=False)
-    sys.argv = [os.path.join(LIB, 'core', 'tts', 'tts.py'), lj, out]
-    g = {'__name__': 'tts_lib', '__file__': sys.argv[0]}; exec(compile(src, 'tts.py', 'exec'), g); k = g['k']
+    # Kokoro through the library's own load() hook (model check, espeak-ng path fix), then phoneme-level lexicon substitution
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('lemo_core_tts', os.path.join(LIB, 'core', 'tts', 'tts.py'))
+    core = importlib.util.module_from_spec(spec); spec.loader.exec_module(core)
+    if not hasattr(core, 'load'):
+        sys.exit('tts.py: core/tts/tts.py has no load() hook: this library core and explainer/ are different versions; update the library')
+    k, avail = core.load()
     from kokoro_onnx.tokenizer import Tokenizer
     tok = Tokenizer(); K = VC.get('kokoro', {}); voice = K.get('voice', 'af_heart'); speed = K.get('speed', 1.0); lang = K.get('lang', 'en-us')
+    if voice not in avail: sys.exit(f"tts.py: unknown Kokoro voice '{voice}'; core/tts/tts.py offers: {', '.join(avail)}")
     ipa = {term: (LEX[term].get('ipa') or tok.phonemize(LEX[term]['say'].replace('.', ''), lang).strip()) for term in terms}
     for L, S in zip(lines, SC['scenes']):
         ph = tok.phonemize(L['text'], lang)
