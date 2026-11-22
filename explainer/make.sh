@@ -1,20 +1,51 @@
 #!/bin/sh
-# explainer/make.sh films/<slug> [--provider auto|elevenlabs|kokoro] [--workers 4]
+# explainer/make.sh films/<slug> [--provider auto|elevenlabs|kokoro] [--workers 4] [--skip-voice]
 # One command from scenes.json to a checked film:
 #   lint → pronunciation gate + voice → timeline → frames → mix → master (−14 LUFS) → subtitles → QA gate.
 # Exits non-zero at the first failed step. The film is delivered to films/<slug>/dist/ ONLY if the QA gate passes.
+# --skip-voice uses the voice files already in the film folder (the test fixture's synthetic voice); it checks they are
+# complete and match scenes.json, so a missing line fails here instead of quietly recording nothing.
 set -e
-[ -n "$1" ] || { echo "usage: sh explainer/make.sh films/<slug> [--provider P] [--workers N]"; exit 2; }
+[ -n "$1" ] || { echo "usage: sh explainer/make.sh films/<slug> [--provider P] [--workers N] [--skip-voice]"; exit 2; }
 LIB=$(cd "$(dirname "$0")/.." && pwd); export LIB; cd "$LIB"
 FILM=$(cd "$1" && pwd); SLUG=$(basename "$FILM"); shift
-PROVIDER=""; WORKERS=4
-while [ $# -gt 0 ]; do case $1 in --provider) PROVIDER="--provider $2"; shift 2 ;; --workers) WORKERS=$2; shift 2 ;; *) echo "unknown option $1"; exit 2 ;; esac; done
+PROVIDER=""; WORKERS=4; SKIP_VOICE=0
+while [ $# -gt 0 ]; do case $1 in --provider) PROVIDER="--provider $2"; shift 2 ;; --workers) WORKERS=$2; shift 2 ;; --skip-voice) SKIP_VOICE=1; shift ;; *) echo "unknown option $1"; exit 2 ;; esac; done
 PY=.venv/bin/python
 [ -x "$PY" ] || { echo "✗ no .venv: run sh explainer/setup.sh first"; exit 1; }
 [ -f "$FILM/index.html" ] || cp explainer/engine/index.html "$FILM/index.html"
 step() { printf '\n── %s ──\n' "$1"; }
 step "1/8 lint scenes.json";            $PY explainer/lint.py "$FILM"
-step "2/8 pronunciation gate + voice";  $PY explainer/voice/tts.py "$FILM" $PROVIDER
+if [ "$SKIP_VOICE" = 1 ]; then
+  step "2/8 voice (skipped: using the voice already in $SLUG/voice)"
+  $PY - "$FILM" <<'PY'
+import json, os, sys, wave
+film = sys.argv[1]
+scenes = json.load(open(os.path.join(film, 'scenes.json'), encoding='utf-8'))['scenes']
+durs = json.load(open(os.path.join(film, 'voice', 'dur.json'), encoding='utf-8'))
+ids = {s['id'] for s in scenes}
+bad = [f"voice/dur.json has no duration for scene {i!r}" for i in sorted(ids - set(durs))]
+bad += [f"voice/dur.json names {i!r}, which is not a scene" for i in sorted(set(durs) - ids)]
+for s in scenes:
+    i, d = s['id'], durs.get(s['id'])
+    if not isinstance(d, (int, float)) or d <= 0: bad.append(f"voice/dur.json: {i} is {d!r}, not a duration"); continue
+    p = os.path.join(film, 'voice', i + '.wav')
+    if not os.path.isfile(p): bad.append(f"voice/{i}.wav is missing"); continue
+    try:
+        with wave.open(p) as w: got = w.getnframes() / w.getframerate()
+    except Exception as e: bad.append(f"voice/{i}.wav is not a readable WAV: {e}"); continue
+    if abs(got - d) > 0.02: bad.append(f"voice/{i}.wav is {got:.3f}s but voice/dur.json says {d:.3f}s")
+vj = os.path.join(film, 'voice', 'voice.json')
+if not os.path.isfile(vj): bad.append('voice/voice.json is missing (the QA gate needs the voice record)')
+else:
+    try: json.load(open(vj, encoding='utf-8'))
+    except Exception as e: bad.append(f'voice/voice.json is not valid JSON: {e}')
+if bad: print('VOICE CHECK FAILED (--skip-voice)\n  ' + '\n  '.join(bad)); sys.exit(1)
+print(f"voice: {len(scenes)} lines already in voice/ ({sum(durs[i] for i in ids):.1f}s; --skip-voice)")
+PY
+else
+  step "2/8 pronunciation gate + voice";  $PY explainer/voice/tts.py "$FILM" $PROVIDER
+fi
 step "3/8 timeline";                    node explainer/engine/export.mjs "$FILM"
 step "4/8 frames";                      node core/render/video.mjs "$FILM" --fps 24 --workers "$WORKERS" --size 1080x1920 --out "$FILM/out/video.mp4"
 step "5/8 mix";                         $PY explainer/engine/mix.py "$FILM"

@@ -1,0 +1,9 @@
+{
+ "provider": "synthetic",
+ "voice": "fixture-tone",
+ "terms": [],
+ "said": {
+  "s1": "A tiny film, built by the pipeline.",
+  "s2": "Export, frames, mix and master, then the gate."
+ }
+}

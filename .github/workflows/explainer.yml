@@ -1,6 +1,8 @@
 # Checks every explainer example without the voice model, ffmpeg or a venv: lint each script, then run the pronunciation
 # gate in --check-only mode. Both use the standard library only, so a bad scenes.json or a term missing from the lexicon
 # fails here, before merge, without the ~350 MB Kokoro model or ELEVENLABS_API_KEY.
+# The second job builds the tiny fixture for real (export, frames, mix, master, QA) with a synthetic voice, then proves
+# the skip-voice path rejects a missing line: a broken pipeline stage fails here without the voice model.
 name: explainer
 
 on:
@@ -37,3 +39,54 @@ jobs:
             [ -f "$d/scenes.json" ] || continue
             python3 explainer/voice/tts.py "$d" --check-only
           done
+
+  # The real pipeline on a two-scene film: lint, timeline, frames, mix, master, QA. Its voice is committed durations plus
+  # standard-library-generated WAVs, so this needs no voice model and no key. Only the renderer, its browser and the
+  # four mix packages are installed.
+  fast-film:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: renderer, headless browser and mix packages (no voice tier)
+        run: |
+          npm ci --no-audit --no-fund --loglevel=error
+          node node_modules/playwright-core/cli.js install chromium-headless-shell
+          python3 -m venv .venv
+          .venv/bin/python -m pip install --quiet --disable-pip-version-check numpy scipy soundfile soxr
+      - name: synthetic voice (standard library, no model)
+        run: python3 explainer/test/synthetic_voice.py explainer/test/fixture
+      # A fixture that quietly renders silence would still pass some checks: prove --skip-voice refuses an incomplete voice.
+      - name: an incomplete synthetic voice is rejected
+        run: |
+          set -- explainer/test/fixture/voice/*.wav
+          mv "$1" "$1.away"
+          if sh explainer/make.sh explainer/test/fixture --skip-voice --workers 1; then
+            echo "::error::make.sh built a fixture whose voice is missing a line"; exit 1
+          fi
+          mv "$1.away" "$1"
+          echo "missing voice line: rejected"
+      - name: build the fixture (export, frames, mix, master, QA)
+        run: sh explainer/make.sh explainer/test/fixture --skip-voice --workers 2
+      # make.sh delivers only on QA PASS; check the report and every delivered file, so a run that claimed a pass
+      # without producing the film cannot go green.
+      - name: the gate passed and delivered the film
+        run: |
+          python3 - <<'PY'
+          import json, os
+          d = 'explainer/test/fixture'
+          qa = json.load(open(os.path.join(d, 'qa', 'report.json'), encoding='utf-8'))
+          assert qa['errors'] == 0, qa
+          assert qa['audio'] and qa['audio']['length'] > 0, qa
+          for f in ('fixture.mp4', 'fixture.srt', 'poster.jpg'):
+              assert os.path.getsize(os.path.join(d, 'dist', f)) > 0, f
+          assert '**PASS**' in open(os.path.join(d, 'qa', 'report.md'), encoding='utf-8').read()
+          print('fixture: QA PASS, 0 errors, dist/ complete')
+          PY

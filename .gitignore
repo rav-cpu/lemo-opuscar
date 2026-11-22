@@ -97,6 +97,15 @@ styles/*/demo/stills/*
 /explainer/examples/*/qa/*
 !/explainer/examples/*/qa/report.md
 !/explainer/examples/*/qa/report.json
+# The fast end-to-end fixture writes its synthetic voice and build in place; dur.json and voice.json are committed
+/explainer/test/fixture/index.html
+/explainer/test/fixture/out/
+/explainer/test/fixture/voice/*.wav
+/explainer/test/fixture/*.mp4
+/explainer/test/fixture/*.srt
+/explainer/test/fixture/poster.jpg
+/explainer/test/fixture/dist/
+/explainer/test/fixture/qa/
 
 
 # Production logs are internal: they stay local

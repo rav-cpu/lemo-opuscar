@@ -46,6 +46,11 @@ Not automatic: whether the facts are right and whether it *sounds* good. Listen 
 | `voice/lexicon.json` | how to say tech terms; grows with every film |
 | `qa/verify.mjs` | the QA gate |
 | `examples/gpu-ai/scenes.json` | the first test film |
+| `test/fixture/` | the tiny film CI builds end to end (export → frames → mix → master → QA), with a synthetic voice |
+| `test/synthetic_voice.py` | writes that fixture's `voice/<id>.wav` from its committed `voice/dur.json`; no voice model |
+
+The CI `fast-film` job runs the same pipeline on that fixture: `python3 explainer/test/synthetic_voice.py explainer/test/fixture`,
+then `sh explainer/make.sh explainer/test/fixture --skip-voice` (about 80 s on two cores).
 
 ## Voice
 

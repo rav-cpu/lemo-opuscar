@@ -1,0 +1,12 @@
+{
+ "title": "Tiny explainer fixture",
+ "topic": "the fast end-to-end test film",
+ "voice": {"provider": "synthetic"},
+ "outro": 1.2,
+ "scenes": [
+  {"id": "s1", "say": "A tiny film, built by the pipeline.", "visual": {"type": "title", "text": "Tiny fixture"}},
+  {"id": "s2", "say": "Export, frames, mix and master, then the gate.", "visual": {"type": "signal", "traces": [
+    {"wave": "sine", "freq": 1.2, "amp": 0.7},
+    {"wave": "sine", "freq": 1.8, "amp": 0.5, "phase": 1.1}], "sum": {"amp": 0.7}}}
+ ]
+}
