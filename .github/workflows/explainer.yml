@@ -55,12 +55,36 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: '3.12'
-      - name: renderer, headless browser and mix packages (no voice tier)
+      # node_modules and the headless shell are the slow downloads, so each is cached under a key that changes only when
+      # what installed it changes: a repeat run restores them, and a lockfile or Playwright bump misses and reinstalls.
+      - uses: actions/cache@v4
+        id: modules
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-node22-modules-${{ hashFiles('package-lock.json') }}
+      - name: renderer and mix packages (no voice tier)
         run: |
-          npm ci --no-audit --no-fund --loglevel=error
-          node node_modules/playwright-core/cli.js install chromium-headless-shell
+          # A cache saved by a failed run could be incomplete: resolve the renderer and reinstall rather than trust it.
+          if [ "${{ steps.modules.outputs.cache-hit }}" = true ] && node -e "require.resolve('playwright-core/package.json')"; then
+            echo "node_modules restored from cache"
+          else
+            npm ci --no-audit --no-fund --loglevel=error
+          fi
           python3 -m venv .venv
           .venv/bin/python -m pip install --quiet --disable-pip-version-check numpy scipy soundfile soxr
+      - name: the pinned playwright version
+        id: shell-version
+        run: echo "version=$(node -p "require('./node_modules/playwright-core/package.json').version")" >> "$GITHUB_OUTPUT"
+      # Chromium's build number is tied to the playwright-core version, so the version is the whole key: a patch bump of
+      # an unrelated package does not throw the browser away.
+      - uses: actions/cache@v4
+        id: browser
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ steps.shell-version.outputs.version }}-chromium-headless-shell
+      - name: headless browser (skipped on a cache hit)
+        if: steps.browser.outputs.cache-hit != 'true'
+        run: node node_modules/playwright-core/cli.js install chromium-headless-shell
       - name: synthetic voice (standard library, no model)
         run: python3 explainer/test/synthetic_voice.py explainer/test/fixture
       # A fixture that quietly renders silence would still pass some checks: prove --skip-voice refuses an incomplete voice.
