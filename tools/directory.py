@@ -71,7 +71,7 @@ EDITS = [
     ('AGENTS.md', '| "Make a video on X", "explain Y": a short vertical tech explainer | **This fork** below → [`explainer/README.md`](explainer/README.md) |\n', ''),
     ('AGENTS.md',
      '## This fork: tech explainer films\n\n'
-     'The owner of this fork makes short **English** tech explainers (1080×1920, 45–60 s) in the Oscilloscope Math style:\n'
+     'The owner of this fork makes short **English** tech explainers (1080×1920, 25–60 s) in the Oscilloscope Math style:\n'
      'voice, subtitles and on-screen text are English, so **the language question in Start does not apply**.\n'
      'When the request is a topic to explain ("make a video on X", "explain Y"), use [`explainer/`](explainer/README.md)\n'
      'and skip **Workflow** steps 1–4 (Brief, Treatment, Look, Storyboard): the style, size and voice are already decided.\n'

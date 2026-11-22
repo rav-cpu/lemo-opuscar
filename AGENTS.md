@@ -18,7 +18,7 @@ This repository is a library of film styles. Each style has a `styles/<slug>/STY
 
 ## This fork: tech explainer films
 
-The owner of this fork makes short **English** tech explainers (1080×1920, 45–60 s) in the Oscilloscope Math style:
+The owner of this fork makes short **English** tech explainers (1080×1920, 25–60 s) in the Oscilloscope Math style:
 voice, subtitles and on-screen text are English, so **the language question in Start does not apply**.
 When the request is a topic to explain ("make a video on X", "explain Y"), use [`explainer/`](explainer/README.md)
 and skip **Workflow** steps 1–4 (Brief, Treatment, Look, Storyboard): the style, size and voice are already decided.
