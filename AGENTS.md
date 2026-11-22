@@ -4,6 +4,7 @@ This repository is a library of film styles. Each style has a `styles/<slug>/STY
 
 | The request | Go to |
 |---|---|
+| "Make a video on X", "explain Y": a short vertical tech explainer | **This fork** below → [`explainer/README.md`](explainer/README.md) |
 | Any request: first see the user's own styles; no request yet: offer the ways in | **Start** below |
 | A film about the user's topic (the normal case) | **Style and story**, **Workflow** below |
 | "Which styles are there?" / no style chosen | **Finding the style** below |
@@ -14,6 +15,15 @@ This repository is a library of film styles. Each style has a `styles/<slug>/STY
 | Adding a style to the library (owner only) | [`MAINTAINING.md`](MAINTAINING.md) |
 
 **Films outside `styles/` are the user's: no LemoLab credit, no watermark.**
+
+## This fork: tech explainer films
+
+The owner of this fork makes short **English** tech explainers (1080×1920, 45–60 s) in the Oscilloscope Math style:
+voice, subtitles and on-screen text are English, so **the language question in Start does not apply**.
+When the request is a topic to explain ("make a video on X", "explain Y"), use [`explainer/`](explainer/README.md)
+and skip **Workflow** steps 1–4 (Brief, Treatment, Look, Storyboard): the style, size and voice are already decided.
+The steps, the `scenes.json` script guide and the voice options are in [`explainer/README.md`](explainer/README.md);
+the **QA gate is mandatory** — a film reaches `dist/` only on PASS, so fix the cause, never the check.
 
 ## Start
 

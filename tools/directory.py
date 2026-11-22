@@ -67,6 +67,16 @@ EDGE_CONSENT = ('it sends the narration text to Microsoft, so in this edition us
 # (file, old, new): exact replacements in the bundled copies, each must match once
 EDITS = [
     ('AGENTS.md', '| Adding a style to the library (owner only) | [`MAINTAINING.md`](MAINTAINING.md) |\n', ''),
+    # the fork's tech explainer routing is owner-only: the plugin bundle has no explainer/ (AGENTS.md, "This fork")
+    ('AGENTS.md', '| "Make a video on X", "explain Y": a short vertical tech explainer | **This fork** below → [`explainer/README.md`](explainer/README.md) |\n', ''),
+    ('AGENTS.md',
+     '## This fork: tech explainer films\n\n'
+     'The owner of this fork makes short **English** tech explainers (1080×1920, 45–60 s) in the Oscilloscope Math style:\n'
+     'voice, subtitles and on-screen text are English, so **the language question in Start does not apply**.\n'
+     'When the request is a topic to explain ("make a video on X", "explain Y"), use [`explainer/`](explainer/README.md)\n'
+     'and skip **Workflow** steps 1–4 (Brief, Treatment, Look, Storyboard): the style, size and voice are already decided.\n'
+     'The steps, the `scenes.json` script guide and the voice options are in [`explainer/README.md`](explainer/README.md);\n'
+     'the **QA gate is mandatory** — a film reaches `dist/` only on PASS, so fix the cause, never the check.\n\n', ''),
     ('AGENTS.md',
      'One exception: a style cut from real material (Edit & Documentary) needs its material before the treatment, so the tools its `STYLE.md` names in `demo/tools/` for finding and logging material (`footage.py` and the like) may be used first, copied into the project folder and run there; still read `DEMO.md` and the rest of the demo only after the treatment is written.',
      'A style cut from real material (Edit & Documentary) needs its material before the treatment. This edition has no demo sources, so the `demo/tools/` its `STYLE.md` names aren\'t here: search for material and log each item\'s page, author and licence yourself, as its `STYLE.md` describes.'),
