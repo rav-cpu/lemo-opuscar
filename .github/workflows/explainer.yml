@@ -1,0 +1,26 @@
+# Checks the explainer example without the voice model, ffmpeg or a venv: lint the script, then run the pronunciation gate
+# in --check-only mode. Both use the standard library only, so a bad scenes.json or a term missing from the lexicon fails
+# here, before merge, without the ~350 MB Kokoro model or ELEVENLABS_API_KEY.
+name: explainer
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: lint the example script
+        run: python3 explainer/lint.py explainer/examples/gpu-ai
+      - name: pronunciation gate
+        run: python3 explainer/voice/tts.py explainer/examples/gpu-ai --check-only
