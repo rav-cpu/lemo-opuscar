@@ -67,16 +67,6 @@ EDGE_CONSENT = ('it sends the narration text to Microsoft, so in this edition us
 # (file, old, new): exact replacements in the bundled copies, each must match once
 EDITS = [
     ('AGENTS.md', '| Adding a style to the library (owner only) | [`MAINTAINING.md`](MAINTAINING.md) |\n', ''),
-    # the fork's tech explainer routing is owner-only: the plugin bundle has no explainer/ (AGENTS.md, "This fork")
-    ('AGENTS.md', '| "Make a video on X", "explain Y": a short vertical tech explainer | **This fork** below → [`explainer/README.md`](explainer/README.md) |\n', ''),
-    ('AGENTS.md',
-     '## This fork: tech explainer films\n\n'
-     'The owner of this fork makes short **English** tech explainers (1080×1920, 25–60 s) in the Oscilloscope Math style:\n'
-     'voice, subtitles and on-screen text are English, so **the language question in Start does not apply**.\n'
-     'When the request is a topic to explain ("make a video on X", "explain Y"), use [`explainer/`](explainer/README.md)\n'
-     'and skip **Workflow** steps 1–4 (Brief, Treatment, Look, Storyboard): the style, size and voice are already decided.\n'
-     'The steps, the `scenes.json` script guide and the voice options are in [`explainer/README.md`](explainer/README.md);\n'
-     'the **QA gate is mandatory** — a film reaches `dist/` only on PASS, so fix the cause, never the check.\n\n', ''),
     ('AGENTS.md',
      'One exception: a style cut from real material (Edit & Documentary) needs its material before the treatment, so the tools its `STYLE.md` names in `demo/tools/` for finding and logging material (`footage.py` and the like) may be used first, copied into the project folder and run there; still read `DEMO.md` and the rest of the demo only after the treatment is written.',
      'A style cut from real material (Edit & Documentary) needs its material before the treatment. This edition has no demo sources, so the `demo/tools/` its `STYLE.md` names aren\'t here: search for material and log each item\'s page, author and licence yourself, as its `STYLE.md` describes.'),
@@ -141,6 +131,24 @@ EDITS = [
 FETCH_HEREDOC = re.compile(r'^"\$PY" ((?:-X \S+ )*)- \$PACKS <<\'PY\'\n(.*?)^PY\n', re.S | re.M)   # keeps options such as -X utf8
 
 
+# The fork's notes in AGENTS.md are marked, not copied here, so their text can change without touching this file: the plugin
+# bundle has no explainer/ and must not point at one.
+FORK_ROW = re.compile(r'^.*<!-- fork:row -->.*\n', re.M)              # inside the routing-table row, so the table still parses
+FORK_BLOCK = re.compile(r'<!-- fork:start -->\n.*?<!-- fork:end -->\n\n?', re.S)
+
+
+def strip_fork():
+    """Remove AGENTS.md's fork routing row and section from the bundled copy. Each marker must appear once: if one is lost,
+    stop rather than ship the fork's text (and links to an explainer/ this edition does not have)."""
+    p = os.path.join(OUT, LIB, 'AGENTS.md')
+    s = open(p, encoding='utf-8').read()
+    for rx, what in ((FORK_ROW, 'routing row, marked with <!-- fork:row -->'),
+                     (FORK_BLOCK, 'section, marked with <!-- fork:start --> … <!-- fork:end -->')):
+        s, n = rx.subn('', s)
+        if n != 1: die(f'AGENTS.md: the fork {what}, must appear once (found {n}); fix the markers in AGENTS.md')
+    open(p, 'w', encoding='utf-8').write(s)
+
+
 def die(msg):
     sys.exit(f'✗ {msg}')
 
@@ -179,6 +187,7 @@ def build(version):
         s = open(p, encoding='utf-8').read()
         if s.count(old) != 1: die(f'{rel}: the text to replace is gone or not unique (update EDITS in tools/directory.py):\n  {old[:120]}')
         open(p, 'w', encoding='utf-8').write(s.replace(old, new))
+    strip_fork()
     # plugin files
     src = os.path.join(ROOT, 'tools', 'directory')
     styles = sum(1 for f in files if f.endswith('/STYLE.md'))

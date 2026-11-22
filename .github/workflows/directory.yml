@@ -1,0 +1,33 @@
+# Builds the directory edition (the plugin bundle) on every pull request and on main. The packager rewrites the library's
+# docs for the bundle and stops if an EDITS replacement or a fork marker in AGENTS.md no longer matches, so a broken strip
+# entry fails here, before merge. Needs no releases, network or secrets: it reads the checkout only.
+name: directory edition
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: '3.12'
+      - name: build the edition
+        run: python3 tools/directory.py 0.0.0
+      # the fork's notes are owner-only and the bundle ships no explainer/: if either string survives, the markers are wrong.
+      # grep on a missing file exits 2, which `!` would turn into a pass, so the file is checked first.
+      - name: the fork's notes are gone
+        run: |
+          B=.release/directory/skills/lemo-opuscar/library/AGENTS.md
+          [ -f "$B" ] || { echo "::error::$B is missing: the packager did not write the bundle"; exit 1; }
+          ! grep -q 'This fork' "$B"
+          ! grep -q 'explainer/' "$B"
+          echo "bundle AGENTS.md: no fork notes"
