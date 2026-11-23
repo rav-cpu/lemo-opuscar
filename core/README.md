@@ -88,7 +88,6 @@ The styles marked ✦ in the style list (`"needs": ["image-generation"]` in thei
 | `LEMO_ANGLE` | WebGL backend (default `metal` on macOS; `default` passes none). A virtualised adapter (most cloud VMs and CI runners) creates the demo's context and then drops it, so WebGL styles draw nothing: `LEMO_ANGLE=swiftshader` asks for software rendering up front and renders them, slowly |
 | `RENDER_SLOTS` | optional; limits concurrent full renders across processes |
 | `LEMO_FETCH=0` | `sampler.py` doesn't download missing sample libraries; it stops and names the `fetch.sh` commands |
-| `LEMO_COLOR=bt709` | `mux.sh` writes limited-range BT.709 instead of the default full-range output |
 | `WHISPER_MODEL` | Whisper model name or local folder for `asr_check.py` (same as `--model`; default `base.en` for English, `small` for Chinese, `base` otherwise) |
 | `HF_ENDPOINT` | Hugging Face mirror for the Whisper download |
 

@@ -56,8 +56,15 @@ try { await Promise.all([...Array(WK)].map(async (_, w) => {
   const a = w * per, b = Math.min(TOTAL, a + per); if (a >= b) return;
   const { browser, page } = await openDemo(dir, { w: W, h: H, q: Q });
   // cwd set to the segment directory with relative filenames: that way ffmpeg won't read characters such as # ? in the path as protocol syntax
+  // Colour: the page's JPEG screenshots are full-range BT.601 (what a JPEG is), so they are converted once, here, to
+  // the standard for HD video, limited-range BT.709, and the file is labelled with it. Without the labels every player
+  // assumes BT.709 for 1080p anyway, but the chroma was 601, so saturated colour decoded wrong (green 254 → 214);
+  // labelled and converted, the picture decodes back to the page's own pixels.
   const ff = spawn('ffmpeg', ['-y', '-loglevel', 'error', '-f', 'image2pipe', '-framerate', String(FPS), '-c:v', 'mjpeg', '-i', '-',
-    '-c:v', 'libx264', '-preset', 'medium', '-crf', '14', '-pix_fmt', 'yuv420p', `seg_${w}.mp4`], { cwd: segDir, stdio: ['pipe', 'inherit', 'inherit'] });
+    '-vf', 'scale=in_range=pc:in_color_matrix=bt601:out_range=tv:out_color_matrix=bt709:sws_flags=accurate_rnd+full_chroma_int,format=yuv420p',
+    '-c:v', 'libx264', '-preset', 'medium', '-crf', '14', '-pix_fmt', 'yuv420p',
+    '-colorspace', 'bt709', '-color_primaries', 'bt709', '-color_trc', 'bt709', '-color_range', 'tv',
+    `seg_${w}.mp4`], { cwd: segDir, stdio: ['pipe', 'inherit', 'inherit'] });
   procs.add(ff); ff.on('close', () => procs.delete(ff));
   let dead = null;   // ffmpeg exited early (missing encoder, disk full…): its own error is already on stderr; here we just note it and stop feeding frames
   let done; const closed = new Promise(r => { done = r; }); ff.on('close', code => done(code));
