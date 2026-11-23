@@ -1,5 +1,7 @@
-// explainer/qa/verify.mjs — the mandatory quality gate for every explainer film. Run from the library root:
-//   node explainer/qa/verify.mjs films/<slug> [--video films/<slug>/<slug>.mp4] [--step 0.125]
+// explainer/qa/verify.mjs — the mandatory quality gate for every explainer film, and for any library-style film that
+// provides the same page contract (window.QA / TEXTS / SCENES / CUES / EV). Run from the library root:
+//   node explainer/qa/verify.mjs films/<slug> [--video films/<slug>/<slug>.mp4] [--step 0.125] [--size 1080x1920]
+//   --size defaults to 1080x1920, the vertical explainer; pass the film's own frame for another aspect (1920x1080).
 // Exits 1 if any ERROR is found. Writes qa/report.md, qa/report.json and qa/contact.jpg.
 //
 // What it checks
@@ -15,13 +17,16 @@
 //  12 subtitle timing (≥ 1.8 s, ≥ line + 0.6 s, no overlap)   13 loudness −14 ±1 LUFS, true peak ≤ −1 dBTP
 //  14 video length = timeline length       15 reading time of on-screen text (core readcheck)
 //  16 empty scene (a scene that draws nothing)   17 voice provider + pronunciation record (fallback voice = WARN)
-//  18 the page is the 1080×1920 these checks assume
+//  18 the page is the --size frame these checks assume (default 1080×1920)
 import fs from 'fs'; import path from 'path'; import { execFileSync, spawnSync } from 'child_process';
-import { openDemo, closeServer } from '../../core/render/page.mjs';
+import { openDemo, closeServer, takeSize } from '../../core/render/page.mjs';
 
 const args = process.argv.slice(2), opt = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const dir = path.resolve(args[0]), STEP = +opt('--step', 0.125), VIDEO = opt('--video', path.join(dir, path.basename(dir) + '.mp4'));
-const W = 1080, H = 1920, SAFE = 32, PERSIST = 0.25;   // an overlap must last ≥ PERSIST s to count (a label sweeping past is fine)
+// takeSize defaults to 1920x1080 (the renderers' default), so the flag is only taken when it was actually given: an
+// explainer run without --size must keep checking the 1080x1920 page it has always checked.
+const { w: W, h: H } = args.includes('--size') ? takeSize(args) : { w: 1080, h: 1920 };
+const SAFE = 32, PERSIST = 0.25;   // an overlap must last ≥ PERSIST s to count (a label sweeping past is fine)
 fs.mkdirSync(path.join(dir, 'qa'), { recursive: true });
 const issues = [];   // {sev, check, t0, t1, what}
 const add = (sev, check, t0, t1, what) => issues.push({ sev, check, t0: +t0.toFixed(2), t1: +t1.toFixed(2), what });
